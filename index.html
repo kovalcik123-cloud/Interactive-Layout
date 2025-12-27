@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Interactive Layout — v11.7 (Fixed Bottlenecks)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* ProcessAI Inspired Palette */
+    --bg-dark: #050505;
+    --bg-gradient: radial-gradient(circle at 50% 0%, #0f1521 0%, #000000 100%);
+    
+    /* Glass Panel Colors */
+    --glass-bg: rgba(20, 25, 40, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+    /* Text */
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-accent: #66fcf1; 
+    
+    /* BRAND: ProcessAI Neon Cyan #66fcf1 (For UI Buttons) */
+    --brand-neon: #66fcf1;
+    --brand-neon-glow: rgba(102, 252, 241, 0.5);
+    --brand-neon-bg: rgba(102, 252, 241, 0.15);
+
+    /* Functional Colors */
+    --color-bottleneck: #ef4444;
+    
+    /* Cell Colors */
+    --c1: #39ff14; /* Neon Green for Stations */
+    --c2: #fb923c; /* Orange */
+    --c3: #60a5fa; /* Blue */
+    --c4: #f87171; /* Red */
+    --c5: #a78bfa; /* Purple */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg-dark);
+    background-image: var(--bg-gradient);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* --- HEADER --- */
+  header {
+    height: 64px;
+    padding: 0 24px;
+    background: rgba(10, 10, 15, 0.8);
+    border-bottom: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 10;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    background: linear-gradient(90deg, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  header .spacer { flex: 1; }
+
+  /* Search Input */
+  .search-wrapper {
+    position: relative;
+    width: 320px;
+  }
+  .search-wrapper input {
+    width: 100%;
+    padding: 10px 16px;
+    padding-left: 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .search-wrapper input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--brand-neon);
+    box-shadow: 0 0 0 1px var(--brand-neon-glow);
+  }
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+  }
+
+  /* --- LAYOUT --- */
+  .wrap {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  /* --- GLASS PANELS --- */
+  .panel {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* --- SIDEBAR --- */
+  .left {
+    padding: 20px;
+    gap: 24px;
+    overflow-y: auto;
+  }
+
+  .section h2 {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section h2::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--glass-border);
+  }
+
+  /* --- 3D GLASSY BUTTONS --- */
+  .seg {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; 
+  }
+
+  .toggle {
+    background: rgba(30, 41, 59, 0.4); 
+    color: var(--text-secondary);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: inherit;
+    
+    /* 3D Borders & Shadows (Inactive) */
+    border: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid rgba(255,255,255,0.1); 
+    border-bottom: 2px solid rgba(0,0,0,0.4); 
+    box-shadow: 
+      0 4px 6px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05); 
+    
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Shine effect on hover */
+  .toggle::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 100%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .toggle:hover {
+    color: var(--text-primary);
+    transform: translateY(-2px);
+    box-shadow: 
+      0 8px 15px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-top-color: rgba(255,255,255,0.2);
+  }
+  .toggle:hover::before { opacity: 1; }
+
+  .toggle:active {
+    transform: translateY(1px);
+    border-bottom-width: 1px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  /* --- BRAND CYAN ACTIVE STATE --- */
+  .toggle.active {
+    background: var(--brand-neon-bg);
+    border: 1px solid var(--brand-neon);
+    border-bottom: 1px solid var(--brand-neon);
+    color: var(--brand-neon);
+    
+    /* Neon Glow Effect */
+    box-shadow: 
+      0 0 20px var(--brand-neon-glow), 
+      inset 0 0 10px rgba(102, 252, 241, 0.2); 
+      
+    text-shadow: 0 0 8px rgba(102, 252, 241, 0.6); 
+  }
+  
+  .toggle.active:hover {
+    transform: translateY(-1px);
+    box-shadow: 
+      0 0 25px var(--brand-neon-glow),
+      inset 0 0 15px rgba(102, 252, 241, 0.3);
+  }
+
+  /* Bottleneck Toggle - Special Red Case */
+  .bottleneck-toggle {
+    width: 100%;
+    margin-top: 8px;
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+  }
+  .bottleneck-toggle:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.6);
+  }
+  .bottleneck-toggle.active-bottleneck {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: var(--color-bottleneck);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+    animation: pulseRed 2s infinite;
+    text-shadow: 0 0 5px rgba(239, 68, 68, 0.8);
+  }
+
+  @keyframes pulseRed {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+
+  /* Legend Chips */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cellchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+  }
+  .swatch {
+    width: 8px; height: 8px; border-radius: 50%;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  /* --- CANVAS AREA --- */
+  .content {
+    position: relative;
+    padding: 0;
+  }
+
+  svg#layout {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border-radius: 16px;
+    cursor: grab;
+  }
+  svg#layout:active { cursor: grabbing; }
+
+  /* SVG Internal Styles */
+  .station rect {
+    /* REMOVED: fill: #1e293b; -> Now set in JS to allow override */
+    fill-opacity: 0.6;
+    /* REMOVED: stroke-width: 2px; -> Now set in JS to allow override */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    rx: 8px; 
+  }
+
+  .station text {
+    fill: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+
+  .station:hover rect {
+    fill-opacity: 0.9;
+    filter: drop-shadow(0 0 15px var(--brand-neon-glow));
+    stroke: var(--brand-neon);
+    transform: translateY(-2px);
+  }
+
+  .station.faded { opacity: 0.2; filter: grayscale(100%); }
+  
+  /* Flow Lines */
+  .flow-line { stroke: var(--text-secondary); stroke-opacity: 0.3; stroke-width: 1.5; }
+  .manual-arrow { stroke: var(--text-accent); stroke-opacity: 0.8; stroke-width: 2; filter: drop-shadow(0 0 5px rgba(102, 252, 241, 0.4)); }
+
+  /* Grid Pattern override */
+  #gridBg path { stroke: rgba(255,255,255,0.03) !important; }
+
+  /* --- MODAL --- */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.4); 
+    backdrop-filter: blur(1px);     
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .modal {
+    width: 600px;
+    max-width: 90vw;
+    background: #0f172a;
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    position: relative;
+    animation: modalSlide 0.3s ease-out;
+  }
+
+  @keyframes modalSlide {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal h3 {
+    margin: 0 0 20px 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 12px;
+  }
+
+  .grid { display: grid; grid-template-columns: 140px 1fr; gap: 12px 16px; }
+  
+  .row label {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  .row div {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+  }
+
+  .chip {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(102, 252, 241, 0.1);
+    color: var(--text-accent);
+    font-size: 0.75rem;
+    border: 1px solid rgba(102, 252, 241, 0.2);
+    margin-right: 6px; margin-bottom: 4px;
+  }
+
+  /* Close Button in Modal */
+  .modal-close {
+    position: absolute;
+    top: 20px; right: 20px;
+    background: none; border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2rem;
+  }
+  .modal-close:hover { color: var(--text-primary); }
+
+  /* Zoom Controls styling */
+  .controls { margin-top: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Interactive Layout</h1>
+  <div class="spacer"></div>
+  <div class="search-wrapper">
+    <span class="search-icon">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+    </span>
+    <input id="search" type="text" placeholder="Search station, project or ID...">
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- Sidebar Controls -->
+  <aside class="panel left">
+    <div class="section">
+      <h2>Active Line</h2>
+      <div id="lineSeg" class="seg">
+        <button class="toggle active">Line 1</button>
+        <button class="toggle">Line 2</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Projects Filter</h2>
+      <div id="projSeg" class="seg"></div>
+    </div>
+
+    <div class="section">
+      <h2>Visual Legend</h2>
+      <div class="legend" id="cellLegend"></div>
+    </div>
+
+    <div class="section" style="margin-top:auto">
+      <h2>View Controls</h2>
+      <div class="controls seg">
+        <button id="zoomIn" class="toggle">+</button>
+        <button id="zoomOut" class="toggle">−</button>
+        <button id="resetView" class="toggle">Reset</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Canvas -->
+  <main class="panel content">
+    <svg id="layout" viewBox="-30.0 0.0 1600.0 425.0" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <pattern id="grid20" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="rgba(255,255,255,0.05)"></circle>
+        </pattern>
+        <marker id="arrowHead" viewBox="0 0 10 10" refX="8" refY="5"
+                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#66fcf1" fill-opacity="0.9" />
+        </marker>
+      </defs>
+      
+      <rect id="gridBg" x="-500" y="-500" width="3000" height="2000" fill="url(#grid20)"></rect>
+      
+      <g id="viewport"></g>
+    </svg>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="backdrop">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">×</button>
+    <h3 id="modal-title">Station Details</h3>
+    <div class="grid" id="modal-grid"></div>
+  </div>
+</div>
+
+<script>
+// --- CORRECTED DATA ---
+// 1. Line 1 (Alpha) Stations - NO OP265 here
+const stations = [{"StationID": "OP30", "StationName": "(Rotor+Bearing drawer load)", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 10.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP32", "StationName": "(Magnetization)", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 10.0, "Y": 110.0, "W": 80.0, "H": 55.0}, {"StationID": "OP20", "StationName": "(Bearing+Seal Plate insertion) ", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 100.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP40", "StationName": "Rotor+Bearing auto load)", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 100.0, "Y": 110.0, "W": 80.0, "H": 55.0}, {"StationID": "OP45", "StationName": "(Pressing of rotor)", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 100.0, "Y": 40.0, "W": 80.0, "H": 55.0}, {"StationID": "OP50", "StationName": "(Load Backp.+Nut+Compressor Wheel) ", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 190.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP55", "StationName": "(CW heating)", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 190.0, "Y": 110.0, "W": 80.0, "H": 55.0}, {"StationID": "OP60", "StationName": "(Locknut screwing) ", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 190.0, "Y": 40.0, "W": 80.0, "H": 55.0}, {"StationID": "OP70", "StationName": "(Automatic unloading) ", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 280.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP100", "StationName": "(Stator insertion) ", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 370.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP110", "StationName": "(Spring positioning)", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 460.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP112", "StationName": "(Pos. of rot assy)", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 460.0, "Y": 110.0, "W": 80.0, "H": 55.0}, {"StationID": "OP115", "StationName": "(Backplate Screwing)", "Cell": "C1", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 550.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP120", "StationName": "(VSR - Vibration Sorting Rig)", "Cell": "C2", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 640.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP130", "StationName": "(Compressor Housing Assembly)", "Cell": "C2", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 730.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP140", "StationName": "(Adapter pressing) ", "Cell": "C2", "Projects": "Audi 2.0L, Audi 3.0L", "X": 820.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP160", "StationName": "(Plasma cleaning)", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 910.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP170", "StationName": "(Connectors on Motor Housing + dosing of the glue Dowsil EA-3838)", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 1000.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP180", "StationName": "(Power PCBA assy.)", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 1090.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP185", "StationName": "(Lead Frame/Rear cover assy.)", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 1180.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP187", "StationName": "(Soldering L. Frame) ", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 1270.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP190", "StationName": "(Welding) ", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 1360.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP194", "StationName": "(Typhoon cleaning)", "Cell": "C3", "Projects": "M254, M256", "X": 1450.0, "Y": 180.0, "W": 80.0, "H": 55.0}, {"StationID": "OP218", "StationName": "(Plasma cleaning)", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 1450.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP215", "StationName": "(Typhoon cleaning)", "Cell": "C3", "Projects": "ET M252, M254, M256", "X": 1360.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP195", "StationName": "(Connector/Pin assy)", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 1270.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP200", "StationName": "(Control PCBA asse. TIA 250 thermal glue/paste)", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 1180.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP210", "StationName": "(Soldering CAN) ", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 1090.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP216", "StationName": "(AOI - Automatic Optical Inspection for soldering) ", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 1000.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP220", "StationName": "(Covers installation + dosing of the glue Dowsil EA-3838)", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 910.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP230", "StationName": "(Curing of thermal glue.)", "Cell": "C3", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 820.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP235", "StationName": "(Leak test)", "Cell": "C4", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 550.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP240", "StationName": "(El. Test + flash)", "Cell": "C4", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 460.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP250", "StationName": "(EOLT - End Of Line Tester)", "Cell": "C4", "Projects": "Audi 2.0L, Audi 3.0L, M254, M256", "X": 370.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP260", "StationName": "(Laser marking)", "Cell": "C5", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 190.0, "Y": 330.0, "W": 80.0, "H": 55.0}, {"StationID": "OP270", "StationName": "(Visual inspection) ", "Cell": "C5", "Projects": "Audi 2.0L, Audi 3.0L, ET M252, M254, M256", "X": 10.0, "Y": 330.0, "W": 80.0, "H": 55.0}];
+
+const CELL_COLORS = {"C1": "#39ff14", "C2": "#fb923c", "C3": "#60a5fa", "C4": "#f87171", "C5": "#a78bfa"};
+const CELLS = ["C1", "C2", "C3", "C4", "C5"];
+
+const shvlStations = [
+  {"StationID": "OP003", "StationName": "", "Cell": "C1", "Projects": "", "X": 60.0,  "Y": 40.0,  "W": 60.0, "H": 60.0},
+  {"StationID": "OP002", "StationName": "", "Cell": "C1", "Projects": "", "X": 130.0, "Y": 40.0,  "W": 60.0, "H": 60.0},
+  {"StationID": "OP007", "StationName": "", "Cell": "C1", "Projects": "", "X": 200.0, "Y": 40.0,  "W": 60.0, "H": 60.0},
+  {"StationID": "OP040", "StationName": "", "Cell": "C1", "Projects": "", "X": 60.0,  "Y": 110.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP050", "StationName": "", "Cell": "C1", "Projects": "", "X": 130.0, "Y": 110.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP055", "StationName": "", "Cell": "C1", "Projects": "", "X": 200.0, "Y": 110.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP060", "StationName": "", "Cell": "C1", "Projects": "", "X": 270.0, "Y": 110.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP032", "StationName": "", "Cell": "C1", "Projects": "", "X": 40.0,  "Y": 180.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP035", "StationName": "", "Cell": "C1", "Projects": "", "X": 110.0, "Y": 180.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP030", "StationName": "", "Cell": "C1", "Projects": "", "X": 60.0,  "Y": 250.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP010", "StationName": "", "Cell": "C1", "Projects": "", "X": 130.0, "Y": 250.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP080", "StationName": "", "Cell": "C1", "Projects": "", "X": 200.0, "Y": 250.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP120", "StationName": "", "Cell": "C1", "Projects": "", "X": 360.0, "Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP125", "StationName": "", "Cell": "C1", "Projects": "", "X": 450.0, "Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP070", "StationName": "", "Cell": "C1", "Projects": "", "X": 270.0, "Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP130A", "StationName": "", "Cell": "C1", "Projects": "", "X": 540.0, "Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP130B", "StationName": "", "Cell": "C1", "Projects": "", "X": 540.0, "Y": 110.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP140",  "StationName": "", "Cell": "C1", "Projects": "", "X": 630.0, "Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1600A","StationName": "", "Cell": "C1", "Projects": "", "X": 720.0, "Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1610B","StationName": "", "Cell": "C1", "Projects": "", "X": 720.0, "Y": 110.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1620", "StationName": "", "Cell": "C1", "Projects": "", "X": 810.0, "Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1650", "StationName": "", "Cell": "C1", "Projects": "", "X": 990.0, "Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1710", "StationName": "", "Cell": "C1", "Projects": "", "X": 1080.0,"Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1740", "StationName": "", "Cell": "C1", "Projects": "", "X": 1170.0,"Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1810\nOP1820", "StationName": "", "Cell": "C1", "Projects": "", "X": 1260.0,"Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1830\nOP1840", "StationName": "", "Cell": "C1", "Projects": "", "X": 1350.0,"Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1910", "StationName": "", "Cell": "C1", "Projects": "", "X": 1440.0,"Y": 180.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP270",  "StationName": "", "Cell": "C1", "Projects": "", "X": 40.0, "Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP265",  "StationName": "", "Cell": "C1", "Projects": "", "X": 110.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP260",  "StationName": "", "Cell": "C1", "Projects": "", "X": 180.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP250",  "StationName": "", "Cell": "C1", "Projects": "", "X": 250.0,"Y": 470.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP240",  "StationName": "", "Cell": "C1", "Projects": "", "X": 360.0,"Y": 470.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP239",  "StationName": "", "Cell": "C1", "Projects": "", "X": 450.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP237",  "StationName": "", "Cell": "C1", "Projects": "", "X": 520.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP235",  "StationName": "", "Cell": "C1", "Projects": "", "X": 590.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP2330", "StationName": "", "Cell": "C1", "Projects": "", "X": 660.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP2310", "StationName": "", "Cell": "C1", "Projects": "", "X": 830.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP2320", "StationName": "", "Cell": "C1", "Projects": "", "X": 730.0,"Y": 470.0, "W": 90.0, "H": 60.0},
+  {"StationID": "OP1625", "StationName": "", "Cell": "C1", "Projects": "", "X": 900.0,"Y": 180.0, "W": 80.0, "H": 350.0},
+  {"StationID": "OP2295", "StationName": "", "Cell": "C1", "Projects": "", "X": 990.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP2240", "StationName": "", "Cell": "C1", "Projects": "", "X": 1060.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP2260", "StationName": "", "Cell": "C1", "Projects": "", "X": 990.0,"Y": 540.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP2250", "StationName": "", "Cell": "C1", "Projects": "", "X": 1060.0,"Y": 540.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP2230", "StationName": "", "Cell": "C1", "Projects": "", "X": 1130.0,"Y": 500.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP2210", "StationName": "", "Cell": "C1", "Projects": "", "X": 1200.0,"Y": 470.0, "W": 60.0, "H": 60.0},
+  {"StationID": "OP1930", "StationName": "", "Cell": "C1", "Projects": "", "X": 1440.0,"Y": 470.0, "W": 80.0, "H": 60.0},
+  {"StationID": "OP1920", "StationName": "", "Cell": "C1", "Projects": "", "X": 1440.0,"Y": 250.0, "W": 80.0, "H": 210.0},
+  {"StationID": "OP120R", "StationName": "", "Cell": "C1", "Projects": "", "X": 270.0,"Y": 400.0, "W": 70.0, "H": 60.0},
+  {"StationID": "OP110R", "StationName": "", "Cell": "C1", "Projects": "", "X": 350.0,"Y": 400.0, "W": 70.0, "H": 60.0},
+  {"StationID": "OP220L", "StationName": "", "Cell": "C1", "Projects": "", "X": 270.0,"Y": 540.0, "W": 70.0, "H": 60.0},
+  {"StationID": "OP210L", "StationName": "", "Cell": "C1", "Projects": "", "X": 350.0,"Y": 540.0, "W": 70.0, "H": 60.0},
+  {"StationID": "OP2050", "StationName": "", "Cell": "C1", "Projects": "", "X": 1270.0,"Y": 470.0, "W": 70.0, "H": 60.0},
+  {"StationID": "OP2010\nOP2020\nOP2030\nOP2040", "StationName": "", "Cell": "C1", "Projects": "", "X": 1350.0,"Y": 470.0, "W": 80.0, "H": 120.0}
+];
+// Shift Line 2 layout slightly up
+const SHVL_Y_OFFSET = -80; 
+shvlStations.forEach(s => { s.Y += SHVL_Y_OFFSET; });
+
+const SHVL_COLOR_MAP = {
+  "OP002": { area: "Area 1A", color: "#FF9BD9" }, "OP003": { area: "Area 1A", color: "#FF9BD9" }, "OP007": { area: "Area 1A", color: "#FF9BD9" },
+  "OP010": { area: "Area 1B", color: "#00BFFF" }, "OP030": { area: "Area 1B", color: "#00BFFF" }, "OP032": { area: "Area 1B", color: "#00BFFF" }, "OP035": { area: "Area 1B", color: "#00BFFF" }, "OP040": { area: "Area 1B", color: "#00BFFF" }, "OP050": { area: "Area 1B", color: "#00BFFF" }, "OP055": { area: "Area 1B", color: "#00BFFF" }, "OP060": { area: "Area 1B", color: "#00BFFF" }, "OP070": { area: "Area 1B", color: "#00BFFF" }, "OP080": { area: "Area 1B", color: "#00BFFF" },
+  "OP120":  { area: "Area 2",   color: "#8D33FF" }, "OP125":  { area: "Area 2",   color: "#8D33FF" }, "OP130A": { area: "Area 2",   color: "#8D33FF" }, "OP130B": { area: "Area 2",   color: "#8D33FF" }, "OP140":  { area: "Area 2",   color: "#8D33FF" },
+  "OP1600A": { area: "Module 1", color: "#00A41B" }, "OP1610B": { area: "Module 1", color: "#00A41B" }, "OP1620":  { area: "Module 1", color: "#00A41B" }, "OP1625":  { area: "Module 1", color: "#00A41B" },
+  "OP1650": { area: "Module 2", color: "#FFD700" }, "OP1710": { area: "Module 2", color: "#FFD700" }, "OP1740": { area: "Module 2", color: "#FFD700" },
+  "OP1810": { area: "Module 3", color: "#FF33A8" }, "OP1830": { area: "Module 3", color: "#FF33A8" },
+  "OP1910": { area: "Module 4", color: "#33FFF0" }, "OP1920": { area: "Module 4", color: "#33FFF0" }, "OP1930": { area: "Module 4", color: "#33FFF0" },
+  "OP2010": { area: "Module 5", color: "#3375FF" }, "OP2050": { area: "Module 5", color: "#3375FF" },
+  "OP2210": { area: "Module 6", color: "#FF8F33" }, "OP2230": { area: "Module 6", color: "#FF8F33" }, "OP2240": { area: "Module 6", color: "#FF8F33" }, "OP2250": { area: "Module 6", color: "#FF8F33" }, "OP2260": { area: "Module 6", color: "#FF8F33" }, "OP2295": { area: "Module 6", color: "#FF8F33" },
+  "OP2310": { area: "Module 7", color: "#7FFF00" }, "OP2320": { area: "Module 7", color: "#7FFF00" }, "OP2330": { area: "Module 7", color: "#7FFF00" },
+  "OP235":  { area: "Area 4", color: "#FF3333" }, "OP237":  { area: "Area 4", color: "#FF3333" }, "OP239":  { area: "Area 4", color: "#FF3333" }, "OP240":  { area: "Area 4", color: "#FF3333" }, "OP110R": { area: "Area 4", color: "#FF3333" }, "OP210L": { area: "Area 4", color: "#FF3333" }, "OP120R": { area: "Area 4", color: "#FF3333" }, "OP220L": { area: "Area 4", color: "#FF3333" }, "OP250":  { area: "Area 4", color: "#FF3333" },
+  "OP260": { area: "Area 5", color: "#40E0D0" }, "OP265": { area: "Area 5", color: "#40E0D0" }, "OP270": { area: "Area 5", color: "#40E0D0" },
+};
+const SHVL_AREAS = [
+  { name: "Area 1A",  color: "#FF9BD9" }, { name: "Area 1B",  color: "#00BFFF" }, { name: "Area 2",   color: "#8D33FF" }, { name: "Module 1", color: "#00A41B" }, { name: "Module 2", color: "#FFD700" }, { name: "Module 3", color: "#FF33A8" },
+  { name: "Module 4", color: "#33FFF0" }, { name: "Module 5", color: "#3375FF" }, { name: "Module 6", color: "#FF8F33" }, { name: "Module 7", color: "#7FFF00" }, { name: "Area 4",   color: "#FF3333" }, { name: "Area 5",   color: "#40E0D0" },
+];
+
+// 2. Restored Full SHVL_POPUPS data for Line 2 descriptions
+const SHVL_POPUPS = {
+  "OP002": { title: "OP002 Bearing insertion into sealplate", processGroup: "Mech. Assy", area: "Area 1A", equipment: "" },
+  "OP003": { title: "OP003 Sealplate insertion into backplate; thrust spacer assy insertion into backplate", processGroup: "Mech. Assy", area: "Area 1A", equipment: "" },
+  "OP007": { title: "OP007 Turbulator and flow pins insertion into MHSG", processGroup: "Mech. Assy", area: "Area 1A", equipment: "" },
+  "OP010": { title: "OP010 Paletization and components check", processGroup: "Mech. Assy", area: "Area 1B", equipment: "Vision" },
+  "OP030": { title: "OP030 Rotor and bearing load", processGroup: "Mech. Assy", area: "Area 1B", equipment: "Robot" },
+  "OP032": { title: "OP032 Rotor magnetization", processGroup: "Mech. Assy", area: "Area 1B", equipment: "Magnetizer" },
+  "OP035": { title: "OP035 Spring load on MHSG", processGroup: "Mech. Assy", area: "Area 1B", equipment: "" },
+  "OP040": { title: "OP040 Rotor and bearing press fit", processGroup: "Mech. Assy", area: "Area 1B", equipment: "Press" },
+  "OP050": { title: "OP050 CW heating and insertion", processGroup: "Mech. Assy", area: "Area 1B", equipment: "" },
+  "OP055": { title: "OP055 CW cooling", processGroup: "Mech. Assy", area: "Area 1B", equipment: "" },
+  "OP060": { title: "OP060 Locknut screwing", processGroup: "Mech. Assy", area: "Area 1B", equipment: "" },
+  "OP070": { title: "OP070 Positioning rotating assy into MHSG", processGroup: "Mech. Assy", area: "Area 1B", equipment: "" },
+  "OP080": { title: "OP080 Backplate bolts screwing", processGroup: "Mech. Assy", area: "Area 1B", equipment: "Screwdriver" },
+  "OP120": { title: "OP120 VSR", processGroup: "Mech. Assy", area: "Area 2", equipment: "VSR" },
+  "OP125": { title: "OP125 VSR", processGroup: "Mech. Assy", area: "Area 2", equipment: "VSR" },
+  "OP130A": { title: "OP130A Compressor housing positioning, bolts screwing", processGroup: "Mech. Assy", area: "Area 2", equipment: "Vision/Screwing" },
+  "OP130B": { title: "OP130B Compressor housing positioning, bolts screwing", processGroup: "Mech. Assy", area: "Area 2", equipment: "" },
+  "OP140": { title: "OP140 Leak test in cooling circuit", processGroup: "Mech. Assy", area: "Area 2", equipment: "Leaktest" },
+  "OP1600A": { title: "OP1600A AC Lead installation", processGroup: "El. Assy", area: "Module 1", equipment: "Press tool for manual insertion" },
+  "OP1610B": { title: "OP1610B AC Lead screwing", processGroup: "El. Assy", area: "Module 1", equipment: "XYZ manipulator wit screwdriver " },
+  "OP1620": { title: "OP1620 Load MHSG on pallet", processGroup: "El. Assy", area: "Module 1", equipment: "Conveyor" },
+  "OP1625": { title: "OP1625 MHSG cleaning", processGroup: "El. Assy", area: "Module 1", equipment: "Ionized air" },
+  "OP1650": { title: "OP1650 Components loading to pallet", processGroup: "El. Assy", area: "Module 2", equipment: "" },
+  "OP1710": { title: "OP1710 Dispensing sealant glue for connectors", processGroup: "El. Assy", area: "Module 2", equipment: "Robot x2" },
+  "OP1740": { title: "OP1740 Can and DC connectors to MHSG", processGroup: "El. Assy", area: "Module 2", equipment: "Robot x2" },
+  "OP1810": { title: "OP1810/1820 Dispenzing thermal glue", processGroup: "El. Assy", area: "Module 3", equipment: "Gluing & 3D Camera" },
+  "OP1830": { title: "OP1830/1840 PCBA to MHSG", processGroup: "El. Assy", area: "Module 3", equipment: "Screwdriver" },
+  "OP1910": { title: "OP1910-1895 Lifter1-->NOK conveyer", processGroup: "El. Assy", area: "Module 4", equipment: "Lifter" },
+  "OP1920": { title: "OP1920 Heating tunnel", processGroup: "El. Assy", area: "Module 4", equipment: "Heating Tunnel 18 minutes to reach 40-45 C" },
+  "OP1930": { title: "OP1930 Lifter 2", processGroup: "El. Assy", area: "Module 4", equipment: "Lifter" },
+  "OP2010": { title: "OP2010/2020/2030/2040 Selective soldering AC, DC connector", processGroup: "El. Assy", area: "Module 5", equipment: "Soldering" },
+  "OP2050": { title: "OP2050 Selective soldering can connector", processGroup: "El. Assy", area: "Module 5", equipment: "Soldering" },
+  "OP2210": { title: "OP2210 Resistive welding + taifun", processGroup: "El. Assy", area: "Module 6", equipment: "Robot & Typhoon" },
+  "OP2230": { title: "OP2230 3D AOI", processGroup: "El. Assy", area: "Module 6", equipment: "AOI" },
+  "OP2240": { title: "OP2240 x 3 MHSG manipulation", processGroup: "El. Assy", area: "Module 6", equipment: "Robot & Static Plasma 1" },
+  "OP2250": { title: "OP2250 Dispensing sealant glue for covers", processGroup: "El. Assy", area: "Module 6", equipment: "Robot & 3D Camera" },
+  "OP2260": { title: "OP2260 Cover placement", processGroup: "El. Assy", area: "Module 6", equipment: "Robot & Static plasma 2" },
+  "OP2295": { title: "OP2295 Screwing rear cover", processGroup: "El. Assy", area: "Module 6", equipment: "" },
+  "OP2310": { title: "OP2310 x 2 Loading oven", processGroup: "El. Assy", area: "Module 7", equipment: "" },
+  "OP2320": { title: "OP2320 x 3 Curing oven (2320/2321-pre-heating; 2322/2323/2324-heating; /2325/2326-cooling)", processGroup: "El. Assy", area: "Module 7", equipment: "Preheat 20min @50°C +/-5°C, max temp. 60°C, Heating – >25min @>100°C, max. temp. 125°C, measured with datalogger, Cooling – <40°C measured on housing when unload" },
+  "OP2330": { title: "OP2330 x 2 Unload oven", processGroup: "El. Assy", area: "Module 7", equipment: "Robot" },
+  "OP235": { title: "OP235 Gasket and cables installation", processGroup: "Mech. Assy", area: "Area 4", equipment: "" },
+  "OP237": { title: "OP237 Leak test (air compartment)", processGroup: "Mech. Assy", area: "Area 4", equipment: "Leaktest" },
+  "OP239": { title: "OP239 Leak test (electronic compartment) and gore vent installation", processGroup: "Mech. Assy", area: "Area 4", equipment: "Leaktest" },
+  "OP240": { title: "OP240 Electric test & flashing Load", processGroup: "Mech. Assy", area: "Area 4", equipment: "ET&F" },
+  "OP110R": { title: "Electric test & flashing Right", processGroup: "Mech. Assy", area: "Area 4", equipment: "ET&F" },
+  "OP210L": { title: "Electric test & flashing Left", processGroup: "Mech. Assy", area: "Area 4", equipment: "ET&F" },
+  "OP120R": { title: "EOLT Right", processGroup: "Mech. Assy", area: "Area 4", equipment: "EOLT" },
+  "OP220L": { title: "EOLT Left", processGroup: "Mech. Assy", area: "Area 4", equipment: "EOLT" },
+  "OP250": { title: "OP250 EOLT Unload", processGroup: "Mech. Assy", area: "Area 4", equipment: "EOLT" },
+  "OP260": { title: "OP260 Laser marking", processGroup: "Mech. Assy", area: "Area 5", equipment: "Laser" },
+  "OP265": { title: "OP265 Mounting bolts installation", processGroup: "Mech. Assy", area: "Area 5", equipment: "Vision" },
+  "OP270": { title: "OP270 Packaging", processGroup: "Mech. Assy", area: "Area 5", equipment: "" }
+};
+
+const FLOWS = {
+  "Audi 2.0L": { "A": ["OP30", "OP32", "OP40", "OP45", "OP55"], "B": ["OP20", "OP50", "OP55"], "Main": ["OP60", "OP70", "OP100", "OP110", "OP112", "OP115", "OP120", "OP130", "OP140", "OP160", "OP170", "OP180", "OP185", "OP187", "OP190", "OP218", "OP195", "OP200", "OP210", "OP216", "OP220", "OP230", "OP235", "OP240", "OP250", "OP260", "OP270"] },
+  "Audi 3.0L": { "A": ["OP30", "OP32", "OP40", "OP45", "OP55"], "B": ["OP20", "OP50", "OP55"], "Main": ["OP60", "OP70", "OP100", "OP110", "OP112", "OP115", "OP120", "OP130", "OP140", "OP160", "OP170", "OP180", "OP185", "OP187", "OP190", "OP218", "OP195", "OP200", "OP210", "OP216", "OP220", "OP230", "OP235", "OP240", "OP250", "OP260", "OP270"] },
+  "ET M252": { "Main": ["OP160", "OP180", "OP200", "OP187", "OP210", "OP215", "OP216", "OP218", "OP220", "OP230", "OP235", "OP240", "OP260", "OP270"] },
+  "M254": { "A": ["OP30", "OP32", "OP40", "OP45", "OP55"], "B": ["OP20", "OP50", "OP55"], "Main": ["OP60", "OP70", "OP100", "OP110", "OP112", "OP115", "OP120", "OP130", "OP160", "OP170", "OP195", "OP180", "OP200", "OP194", "OP187", "OP190", "OP210", "OP215", "OP216", "OP218", "OP185", "OP220", "OP230", "OP235", "OP240", "OP250", "OP260", "OP270"] },
+  "M256": { "A": ["OP30", "OP32", "OP40", "OP45", "OP55"], "B": ["OP20", "OP50", "OP55"], "Main": ["OP60", "OP70", "OP100", "OP110", "OP112", "OP115", "OP120", "OP130", "OP160", "OP170", "OP195", "OP180", "OP200", "OP194", "OP187", "OP190", "OP210", "OP215", "OP216", "OP218", "OP185", "OP220", "OP230", "OP235", "OP240", "OP250", "OP260", "OP270"] }
+};
+const PROJECTS = ["Audi 2.0L", "Audi 3.0L", "ET M252", "M254", "M256"];
+const PROJECT_ARROWS = {"Audi 2.0L":[{"id":"A15","x1":49.7,"y1":189.59,"x2":49.7,"y2":148.74},{"id":"A16","x1":73.61,"y1":135.79,"x2":113.46,"y2":135.79},{"id":"A17","x1":140.36,"y1":121.84,"x2":139.36,"y2":79.0},{"id":"A18","x1":144.35,"y1":79.0,"x2":205.12,"y2":121.84},{"id":"A19","x1":162.28,"y1":206.52,"x2":203.13,"y2":205.53},{"id":"A20","x1":229.03,"y1":191.58,"x2":229.03,"y2":147.74},{"id":"A21","x1":228.03,"y1":119.85,"x2":230.02,"y2":77.01},{"id":"A22","x1":253.94,"y1":76.01,"x2":318.69,"y2":189.59},{"id":"A23","x1":343.6,"y1":205.53,"x2":379.46,"y2":205.53},{"id":"A24","x1":436.25,"y1":207.52,"x2":472.12,"y2":207.52},{"id":"A25","x1":497.02,"y1":189.59,"x2":498.02,"y2":149.74},{"id":"A26","x1":515.95,"y1":149.74,"x2":561.78,"y2":189.59},{"id":"A27","x1":617.57,"y1":205.53,"x2":652.44,"y2":205.53},{"id":"A28","x1":706.24,"y1":206.52,"x2":740.11,"y2":206.52},{"id":"A30","x1":976.23,"y1":207.52,"x2":1011.1,"y2":207.52},{"id":"A45","x1":923.42,"y1":357.95,"x2":886.56,"y2":356.96},{"id":"A46","x1":826.79,"y1":355.96,"x2":620.56,"y2":354.97},{"id":"A47","x1":558.79,"y1":356.96,"x2":526.91,"y2":356.96},{"id":"A48","x1":469.13,"y1":355.96,"x2":437.25,"y2":354.97},{"id":"A49","x1":380.46,"y1":354.97,"x2":256.92,"y2":355.96},{"id":"A50","x1":198.14,"y1":355.96,"x2":80.59,"y2":354.97},{"id":"A52","x1":796.9,"y1":207.52,"x2":832.76,"y2":207.52},{"id":"A53","x1":887.56,"y1":209.51,"x2":920.44,"y2":208.51},{"id":"A54","x1":1066.89,"y1":207.52,"x2":1099.76,"y2":207.52},{"id":"A55","x1":1158.54,"y1":206.52,"x2":1189.43,"y2":206.52},{"id":"A56","x1":1247.21,"y1":207.52,"x2":1281.08,"y2":206.52},{"id":"A57","x1":1336.87,"y1":205.53,"x2":1369.75,"y2":205.53},{"id":"A58","x1":1401.63,"y1":219.47,"x2":1304.0,"y2":339.03},{"id":"A59","x1":1280.09,"y1":353.97,"x2":1248.21,"y2":353.97},{"id":"A60","x1":1187.43,"y1":352.97,"x2":1158.54,"y2":352.97},{"id":"A61","x1":1101.76,"y1":354.97,"x2":1065.89,"y2":354.97},{"id":"A62","x1":1065.89,"y1":392.82,"x2":1464.4,"y2":392.82},{"id":"A63","x1":1464.4,"y1":412.75,"x2":947.34,"y2":412.75}],"Audi 3.0L":[{"id":"A15","x1":49.7,"y1":189.59,"x2":49.7,"y2":148.74},{"id":"A16","x1":73.61,"y1":135.79,"x2":113.46,"y2":135.79},{"id":"A17","x1":140.36,"y1":121.84,"x2":139.36,"y2":79.0},{"id":"A18","x1":144.35,"y1":79.0,"x2":205.12,"y2":121.84},{"id":"A19","x1":162.28,"y1":206.52,"x2":203.13,"y2":205.53},{"id":"A20","x1":229.03,"y1":191.58,"x2":229.03,"y2":147.74},{"id":"A21","x1":228.03,"y1":119.85,"x2":230.02,"y2":77.01},{"id":"A22","x1":253.94,"y1":76.01,"x2":318.69,"y2":189.59},{"id":"A23","x1":343.6,"y1":205.53,"x2":379.46,"y2":205.53},{"id":"A24","x1":436.25,"y1":207.52,"x2":472.12,"y2":207.52},{"id":"A25","x1":497.02,"y1":189.59,"x2":498.02,"y2":149.74},{"id":"A26","x1":515.95,"y1":149.74,"x2":561.78,"y2":189.59},{"id":"A27","x1":617.57,"y1":205.53,"x2":652.44,"y2":205.53},{"id":"A28","x1":706.24,"y1":206.52,"x2":740.11,"y2":206.52},{"id":"A30","x1":976.23,"y1":207.52,"x2":1011.1,"y2":207.52},{"id":"A45","x1":923.42,"y1":357.95,"x2":886.56,"y2":356.96},{"id":"A46","x1":826.79,"y1":355.96,"x2":620.56,"y2":354.97},{"id":"A47","x1":558.79,"y1":356.96,"x2":526.91,"y2":356.96},{"id":"A48","x1":469.13,"y1":355.96,"x2":437.25,"y2":354.97},{"id":"A49","x1":380.46,"y1":354.97,"x2":256.92,"y2":355.96},{"id":"A50","x1":198.14,"y1":355.96,"x2":80.59,"y2":354.97},{"id":"A52","x1":796.9,"y1":207.52,"x2":832.76,"y2":207.52},{"id":"A53","x1":887.56,"y1":209.51,"x2":920.44,"y2":208.51},{"id":"A54","x1":1066.89,"y1":207.52,"x2":1099.76,"y2":207.52},{"id":"A55","x1":1158.54,"y1":206.52,"x2":1189.43,"y2":206.52},{"id":"A56","x1":1247.21,"y1":207.52,"x2":1281.08,"y2":206.52},{"id":"A57","x1":1336.87,"y1":205.53,"x2":1369.75,"y2":205.53},{"id":"A58","x1":1401.63,"y1":219.47,"x2":1304.0,"y2":339.03},{"id":"A59","x1":1280.09,"y1":353.97,"x2":1248.21,"y2":353.97},{"id":"A60","x1":1187.43,"y1":352.97,"x2":1158.54,"y2":352.97},{"id":"A61","x1":1101.76,"y1":354.97,"x2":1065.89,"y2":354.97},{"id":"A62","x1":1065.89,"y1":392.82,"x2":1464.4,"y2":392.82},{"id":"A63","x1":1464.4,"y1":412.75,"x2":947.34,"y2":412.75}],"ET M252":[{"id":"A1","x1":977.22,"y1":207.52,"x2":1101.76,"y2":209.51},{"id":"A2","x1":1153.56,"y1":222.46,"x2":1205.37,"y2":339.03},{"id":"A3","x1":1245.22,"y1":339.03,"x2":1284.07,"y2":221.47},{"id":"A4","x1":1281.08,"y1":217.48,"x2":1126.66,"y2":337.03},{"id":"A5","x1":1126.66,"y1":393.82,"x2":1403.62,"y2":393.82},{"id":"A6","x1":1404.62,"y1":412.75,"x2":1046.96,"y2":413.75},{"id":"A7","x1":1045.97,"y1":432.67,"x2":1485.32,"y2":432.67},{"id":"A8","x1":1485.32,"y1":452.6,"x2":947.34,"y2":452.6},{"id":"A9","x1":921.43,"y1":357.95,"x2":887.56,"y2":357.95},{"id":"A10","x1":829.78,"y1":356.96,"x2":619.56,"y2":356.96},{"id":"A11","x1":560.78,"y1":355.96,"x2":527.91,"y2":354.97},{"id":"A12","x1":467.14,"y1":355.96,"x2":257.92,"y2":353.97},{"id":"A13","x1":196.15,"y1":356.96,"x2":80.59,"y2":355.96}],"M254":[{"id":"A1","x1":49.7,"y1":189.59,"x2":50.7,"y2":151.73},{"id":"A2","x1":76.6,"y1":137.78,"x2":111.47,"y2":137.78},{"id":"A3","x1":140.36,"y1":117.85,"x2":140.36,"y2":81.99},{"id":"A4","x1":168.26,"y1":80.0,"x2":203.13,"y2":120.84},{"id":"A5","x1":168.26,"y1":204.53,"x2":201.13,"y2":205.53},{"id":"A6","x1":229.03,"y1":190.58,"x2":230.02,"y2":151.73},{"id":"A7","x1":229.03,"y1":118.85,"x2":230.02,"y2":80.0},{"id":"A8","x1":259.91,"y1":79.0,"x2":320.68,"y2":189.59},{"id":"A9","x1":346.59,"y1":206.52,"x2":382.45,"y2":206.52},{"id":"A10","x1":439.24,"y1":207.52,"x2":471.12,"y2":206.52},{"id":"A11","x1":500.01,"y1":193.57,"x2":501.01,"y2":150.73},{"id":"A12","x1":526.91,"y1":150.73,"x2":566.76,"y2":190.58},{"id":"A13","x1":617.57,"y1":206.52,"x2":651.44,"y2":206.52},{"id":"A14","x1":709.23,"y1":206.52,"x2":742.1,"y2":206.52},{"id":"A16","x1":797.9,"y1":210.51,"x2":921.43,"y2":209.51},{"id":"A17","x1":979.22,"y1":205.53,"x2":1010.1,"y2":205.53},{"id":"A18","x1":1061.91,"y1":218.48,"x2":1285.07,"y2":334.04},{"id":"A19","x1":1291.05,"y1":334.04,"x2":1153.56,"y2":218.48},{"id":"A20","x1":1148.58,"y1":220.47,"x2":1211.34,"y2":334.04},{"id":"A21","x1":1215.33,"y1":337.03,"x2":1463.4,"y2":228.44},{"id":"A22","x1":1464.4,"y1":223.46,"x2":1332.89,"y2":217.48},{"id":"A23","x1":1336.87,"y1":204.53,"x2":1369.75,"y2":206.52},{"id":"A24","x1":1372.74,"y1":207.52,"x2":1120.68,"y2":333.05},{"id":"A25","x1":1123.67,"y1":344.01,"x2":1391.67,"y2":342.01},{"id":"A26","x1":1398.64,"y1":393.82,"x2":1045.97,"y2":393.82},{"id":"A27","x1":1045.97,"y1":411.75,"x2":1484.32,"y2":411.75},{"id":"A28","x1":1486.31,"y1":337.03,"x2":1230.27,"y2":222.46},{"id":"A29","x1":1225.29,"y1":221.47,"x2":953.31,"y2":335.04},{"id":"A30","x1":919.44,"y1":357.95,"x2":888.56,"y2":358.95},{"id":"A31","x1":828.78,"y1":357.95,"x2":621.56,"y2":357.95},{"id":"A32","x1":557.8,"y1":356.96,"x2":528.9,"y2":357.95},{"id":"A33","x1":467.14,"y1":356.96,"x2":440.24,"y2":356.96},{"id":"A34","x1":374.48,"y1":356.96,"x2":260.91,"y2":356.96},{"id":"A35","x1":194.16,"y1":356.96,"x2":81.58,"y2":356.96}]};
+const CYCLE_TIMES = {
+  "M256":  { "OP235": 570 },
+  "M254":  { "OP235": 570 },
+  "Audi 3.0L": { "OP120": 250 },
+  "Audi 2.0L": { "OP170": 250 },
+  "ET M252": { "OP200": 297 }
+};
+
+// helpers
+const $ = (s)=>document.querySelector(s);
+const $$ = (s)=>Array.from(document.querySelectorAll(s));
+
+function buildProjSeg(){
+  const seg = $("#projSeg");
+  seg.innerHTML = "";
+  const allBtn = document.createElement("button");
+  allBtn.textContent = "ALL";
+  allBtn.className = "toggle active";
+  allBtn.onclick = () => {
+    $$("#projSeg .toggle").forEach(x=>x.classList.remove("active"));
+    allBtn.classList.add("active");
+    render();
+  };
+  seg.appendChild(allBtn);
+  PROJECTS.forEach(p => {
+    const b = document.createElement("button");
+    b.textContent = p;
+    b.className = "toggle";
+    b.onclick = () => {
+      $$("#projSeg .toggle").forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      render();
+    };
+    seg.appendChild(b);
+  });
+
+  // Bottleneck toggle button
+  const bottleneckBtn = document.createElement("button");
+  bottleneckBtn.textContent = "Show Bottlenecks";
+  bottleneckBtn.id = "btnBottleneck";
+  bottleneckBtn.className = "toggle bottleneck-toggle";
+  bottleneckBtn.onclick = () => {
+    bottleneckOn = !bottleneckOn;
+    if (bottleneckOn) {
+      bottleneckBtn.classList.add("active-bottleneck");
+    } else {
+      bottleneckBtn.classList.remove("active-bottleneck");
+    }
+    render();
+  };
+  seg.appendChild(bottleneckBtn);
+}
+buildProjSeg();
+
+function buildLegend(){
+  const L = $("#cellLegend");
+  L.innerHTML = "";
+
+  if (activeLine === "Line 1") {
+    // Original C1–C5 legend
+    CELLS.forEach(c => {
+      const chip = document.createElement("div");
+      chip.className = "cellchip toggle";
+      const sw = document.createElement("span");
+      sw.className = "swatch";
+      sw.style.background = CELL_COLORS[c] || "#9ca3af";
+      chip.appendChild(sw);
+      const txt = document.createElement("span");
+      txt.textContent = c || "(no cell)";
+      chip.appendChild(txt);
+      L.appendChild(chip);
+    });
+
+  } else {
+    // Line 2 static Area legend
+    SHVL_AREAS.forEach(a => {
+      const chip = document.createElement("div");
+      chip.className = "cellchip";
+      const sw = document.createElement("span");
+      sw.className = "swatch";
+      sw.style.background = a.color || "#9ca3af";
+      chip.appendChild(sw);
+      const txt = document.createElement("span");
+      txt.textContent = a.name;
+      chip.appendChild(txt);
+      L.appendChild(chip);
+    });
+  }
+}
+
+let gridOn = false;
+let bottleneckOn = false;
+let activeLine = "Line 1"; 
+
+function openModal(s){
+  const isSHVL = (activeLine === "Line 2");
+  const stationIdText = String(s.StationID || "");
+  const firstOp = stationIdText.split("\n")[0];
+  const allOpsDisplay = stationIdText.replace(/\n/g, " / ");
+  const popup = (isSHVL && SHVL_POPUPS[firstOp]) ? SHVL_POPUPS[firstOp] : null;
+
+  const baseTitle = (popup && popup.title) || (s.StationName && s.StationName.trim()) || "Station detail";
+  $("#modal-title").textContent = `${allOpsDisplay} — ${baseTitle}`;
+
+  const comps = (s.Projects || "").split(",").map(x => x.trim()).filter(Boolean)
+    .map(c => `<span class="chip">${c}</span>`).join(" ");
+
+  const activeProjBtn = $$("#projSeg .toggle.active")[0];
+  const activeProj = activeProjBtn ? activeProjBtn.textContent.trim() : "ALL";
+
+  let cycleRow = "";
+  if (activeProj !== "ALL" && CYCLE_TIMES[activeProj] && CYCLE_TIMES[activeProj][s.StationID]) {
+    const ct = CYCLE_TIMES[activeProj][s.StationID];
+    cycleRow = `<div class="row"><label>Cycle Time</label><div style="color:var(--color-bottleneck)">${ct}s</div></div>`;
+  }
+
+  let areaText = popup && popup.area;
+  if (!areaText && isSHVL) {
+    const info = SHVL_COLOR_MAP[firstOp];
+    if (info && info.area) areaText = info.area;
+  }
+
+  const rows = [];
+  if (!isSHVL) rows.push(`<div class="row"><label>Cell</label><div>${s.Cell || "-"}</div></div>`);
+  if (popup && popup.processGroup) rows.push(`<div class="row"><label>Process</label><div>${popup.processGroup}</div></div>`);
+  if (areaText) rows.push(`<div class="row"><label>Area</label><div>${areaText}</div></div>`);
+  rows.push(`<div class="row"><label>Projects</label><div>${comps || "-"}</div></div>`);
+  
+  const descText = (popup && popup.title) || (s.StationName && s.StationName.trim()) || "";
+  rows.push(`<div class="row"><label>Description</label><div>${descText || "-"}</div></div>`);
+  
+  if (popup && popup.equipment) rows.push(`<div class="row"><label>Equipment</label><div>${popup.equipment}</div></div>`);
+  if (cycleRow) rows.push(cycleRow);
+
+  $("#modal-grid").innerHTML = rows.join("\n");
+  $("#backdrop").style.display = "flex";
+}
+
+
+function render(){
+  const vp = $("#viewport");
+  vp.innerHTML = "";
+  const q = $("#search").value.toLowerCase().trim();
+  const activeProjBtn = $$("#projSeg .toggle.active")[0];
+  const activeProj = activeProjBtn ? activeProjBtn.textContent : "ALL";
+  
+  const projForLogic = (activeLine === "Line 1") ? activeProj : "ALL";
+  const stationsForLine = (activeLine === "Line 1") ? stations : shvlStations;
+  const centerMap = {};
+
+  const matchesSearch = (s) => {
+    if (!q) return true;
+    const query = q;
+    const idText = String(s.StationID || "");
+    if (idText.toLowerCase().includes(query)) return true;
+
+    if (activeLine === "Line 1") {
+      const name = (s.StationName || "").toLowerCase();
+      return name.includes(query);
+    }
+    if (activeLine === "Line 2") {
+      const baseId = String(s.StationID || "").split("\n")[0];
+      const popup = SHVL_POPUPS[baseId];
+      if (!popup) return false;
+      const fields = [popup.title, popup.processGroup, popup.area, popup.equipment];
+      return fields.some(f => f && f.toLowerCase().includes(query));
+    }
+    return false;
+  };
+
+  stationsForLine.forEach(s => {
+      const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+      g.setAttribute("class","station");
+      const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+      rect.setAttribute("x", s.X);
+      rect.setAttribute("y", s.Y);
+      rect.setAttribute("width", s.W);
+      rect.setAttribute("height", s.H);
+      
+      // Determine Stroke Color
+      let strokeBase = CELL_COLORS[s.Cell] || "#475569";
+      if (activeLine === "Line 2") {
+        const baseId = String(s.StationID || "").split("\n")[0];
+        const info = SHVL_COLOR_MAP[baseId];
+        if (info) strokeBase = info.color;
+      }
+
+      const isBottleneck = bottleneckOn && projForLogic !== "ALL" && CYCLE_TIMES[projForLogic] && CYCLE_TIMES[projForLogic][s.StationID];
+      
+      const stroke = isBottleneck ? "#ef4444" : strokeBase;
+      const fill = isBottleneck ? "#450a0a" : "#1e293b"; 
+      
+      // Use styles to ensure overrides of CSS
+      rect.style.fill = fill;
+      rect.style.stroke = stroke;
+      rect.style.strokeWidth = isBottleneck ? "3px" : "2px";
+      
+      // Add pulsing glow effect via CSS class if bottleneck
+      if(isBottleneck) {
+         rect.style.filter = "drop-shadow(0 0 8px rgba(239, 68, 68, 0.6))";
+         rect.style.fillOpacity = "0.8";
+      }
+
+      const label = document.createElementNS("http://www.w3.org/2000/svg","text");
+      label.setAttribute("x", s.X + s.W/2);
+      label.setAttribute("text-anchor","middle");
+      label.setAttribute("font-size","14");
+      label.setAttribute("font-weight","600");
+
+      const lines = String(s.StationID).split("\n");
+      const lineHeight = 16;
+      const totalHeight = lineHeight * lines.length;
+      const startY = s.Y + (s.H - totalHeight) / 2 + lineHeight - 4;
+
+      lines.forEach((line, idx) => {
+        const tspan = document.createElementNS("http://www.w3.org/2000/svg","tspan");
+        tspan.setAttribute("x", s.X + s.W/2);
+        tspan.setAttribute("y", startY + idx * lineHeight);
+        tspan.textContent = line;
+        label.appendChild(tspan);
+      });
+
+      g.appendChild(rect);
+      g.appendChild(label);
+      g.addEventListener("click", () => openModal(s));
+
+      const used = (s.Projects||"").toLowerCase().split(",").map(x=>x.trim());
+      const showStrongProj = (activeProj === "ALL") || used.includes(activeProj.toLowerCase());
+      const hitSearch = matchesSearch(s);
+      const showStrong = showStrongProj && (!q || hitSearch);
+
+      if (!showStrong) g.classList.add("faded");
+      vp.appendChild(g);
+
+      const cx = s.X + s.W/2;
+      const cy = s.Y + s.H/2;
+      const r = Math.min(s.W, s.H)/2 - 4;
+      centerMap[s.StationID] = {cx, cy, r};
+    });
+
+  // FLOW LINES
+  const addFlowPath = (d) => {
+    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d", d);
+    path.setAttribute("class","flow-line");
+    path.setAttribute("marker-end","url(#arrowHead)");
+    vp.appendChild(path);
+  };
+
+  if (projForLogic !== "ALL" && activeLine === "Line 1") {
+    const MANUAL_PROJECTS = ["ET M252","Audi 2.0L","Audi 3.0L","M254","M256"];
+    let arrows = [];
+    if (MANUAL_PROJECTS.includes(activeProj)) arrows = PROJECT_ARROWS[activeProj] || [];
+
+    if (arrows.length === 0) {
+      const flowDef = FLOWS[activeProj];
+      if (flowDef) {
+        Object.entries(flowDef).forEach(([pathId, pathStations]) => {
+          const ids = pathStations.filter(id => centerMap[id]);
+          for (let i = 0; i < ids.length - 1; i++) {
+            const from = ids[i];
+            const to = ids[i + 1];
+            const a = centerMap[from];
+            const b = centerMap[to];
+            if (!a || !b) continue;
+
+            const dx = b.cx - a.cx;
+            const dy = b.cy - a.cy;
+            const len = Math.hypot(dx, dy) || 1;
+            const nx = dx / len;
+            const ny = dy / len;
+            const marginA = a.r;
+            const marginB = b.r;
+            const x1 = a.cx + nx * marginA;
+            const y1 = a.cy + ny * marginA;
+            const x2 = b.cx - nx * marginB;
+            const y2 = b.cy - ny * marginB;
+            addFlowPath(`M ${x1} ${y1} L ${x2} ${y2}`);
+          }
+        });
+      }
+    }
+
+    arrows.forEach(a => {
+      const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+      line.setAttribute("x1", a.x1);
+      line.setAttribute("y1", a.y1);
+      line.setAttribute("x2", a.x2);
+      line.setAttribute("y2", a.y2);
+      line.setAttribute("class", "manual-arrow");
+      line.setAttribute("marker-end", "url(#arrowHead)");
+      vp.appendChild(line);
+    });
+  }
+}
+
+let zoom = 1.0;
+function applyZoom(){ $("#viewport").setAttribute("transform", `scale(${zoom})`); }
+$("#zoomIn").onclick = () => { zoom = Math.min(3.0, +(zoom+0.1).toFixed(2)); applyZoom(); };
+$("#zoomOut").onclick = () => { zoom = Math.max(0.5, +(zoom-0.1).toFixed(2)); applyZoom(); };
+$("#resetView").onclick = () => { zoom = 1.0; applyZoom(); };
+
+$("#search").addEventListener("input", render);
+
+const lineButtons = $$("#lineSeg button");
+lineButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    lineButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const label = btn.textContent.trim().toUpperCase();
+    activeLine = (label === "LINE 2") ? "Line 2" : "Line 1";
+    buildLegend();
+    const projButtons = $$("#projSeg .toggle");
+    projButtons.forEach(b => b.classList.remove("active"));
+    if (projButtons[0]) projButtons[0].classList.add("active");
+    bottleneckOn = false;
+    render();
+  });
+});
+buildLegend();
+render();
+applyZoom();
+
+const backdropEl = $("#backdrop");
+const modalCloseBtn = $("#modalClose");
+function closeModal() { if (backdropEl) backdropEl.style.display = "none"; }
+if (modalCloseBtn) modalCloseBtn.addEventListener("click", closeModal);
+if (backdropEl) backdropEl.addEventListener("click", (e) => { if (e.target === backdropEl) closeModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+</script>
+
+<footer style="
+  width:100%;
+  text-align:center;
+  padding:20px 0;
+  color:#64748b;
+  font-size:0.75rem;
+  letter-spacing:0.05em;
+  opacity:0.8;
+">
+  SYSTEM VERSION v11.7 &bull; <strong style='color:#f1f5f9;'>PROCESS<span style="color:#66fcf1">AI</span>.SK</strong>
+</footer>
+
+</body>
+</html>
